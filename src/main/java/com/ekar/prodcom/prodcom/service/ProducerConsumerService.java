@@ -1,5 +1,12 @@
 package com.ekar.prodcom.prodcom.service;
 
+import java.util.Date;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.ekar.prodcom.prodcom.constants.ApplicationConstants;
 import com.ekar.prodcom.prodcom.dto.CreateThreadReqDto;
 import com.ekar.prodcom.prodcom.dto.ResetCounterReq;
@@ -9,36 +16,41 @@ import com.ekar.prodcom.prodcom.repository.CounterTransactionRepository;
 import com.ekar.prodcom.prodcom.repository.RequestEntityRepository;
 import com.ekar.prodcom.prodcom.util.ConsumerThread;
 import com.ekar.prodcom.prodcom.util.ProducerThread;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
 @Service
 public class ProducerConsumerService {
 
-    @Autowired
-    private RequestEntityRepository requestEntityRepository;
+	private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Autowired
-    private CounterTransactionRepository counterTransactionRepository;
+	@Autowired
+	private RequestEntityRepository requestEntityRepository;
 
-    public void updateThread(CreateThreadReqDto reqDto) {
+	@Autowired
+	private CounterTransactionRepository counterTransactionRepository;
 
-        requestEntityRepository.save(new RequestEntity( reqDto.getProducerCount(), reqDto.getConsumerCount()));
+	public void updateThread(CreateThreadReqDto reqDto) {
 
-        //Creating Producer and Consumer Thread
-        for(int i=0; i < reqDto.getProducerCount(); i++){
-            Thread prodThread = new Thread(new ProducerThread(counterTransactionRepository));
-            prodThread.start();
-        }
+		requestEntityRepository.save(new RequestEntity(reqDto.getProducerCount(), reqDto.getConsumerCount()));
 
-        for(int i=0;i<reqDto.getConsumerCount();i++){
-            Thread consThread = new Thread(new ConsumerThread(counterTransactionRepository));
-            consThread.start();
-        }
+		// Creating Producer and Consumer Thread
+		for (int i = 0; i < reqDto.getProducerCount(); i++) {
+			Thread prodThread = new Thread(new ProducerThread());
+			prodThread.start();
+		}
 
-    }
+		for (int i = 0; i < reqDto.getConsumerCount(); i++) {
+			Thread consThread = new Thread(new ConsumerThread());
+			consThread.start();
+		}
 
-    public void resetCounter(ResetCounterReq resetCounter) {
-        ApplicationConstants.counter = resetCounter.getResetValue();
-    }
+		if (ApplicationConstants.counter == 0 || ApplicationConstants.counter == 100) {
+			counterTransactionRepository.save(new CounterTransaction(ApplicationConstants.counter, new Date()));
+			logger.info("Timestamp Data persisted to data base");
+		}
+
+	}
+
+	public void resetCounter(ResetCounterReq resetCounter) {
+		ApplicationConstants.counter = resetCounter.getResetValue();
+	}
 }
